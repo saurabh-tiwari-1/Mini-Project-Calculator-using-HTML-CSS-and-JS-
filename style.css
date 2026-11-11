@@ -200,3 +200,108 @@ body.light-mode #historyList .history-result {
 body.light-mode #historyList li {
     border-bottom-color: #e2e8f0;
 }
+
+/* SCIENTIFIC CALCULATOR */
+
+.scientific-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.scientific-button {
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    background: #26364d;
+    color: #38bdf8;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.scientific-button:hover {
+    background: #344762;
+    transform: translateY(-2px);
+}
+
+body.light-mode .scientific-button {
+    background: #e2e8f0;
+    color: #2563eb;
+    border-color: #cbd5e1;
+}
+
+/* MOBILE RESPONSIVE DESIGN */
+
+@media screen and (max-width: 600px) {
+
+    body {
+        width: 100%;
+        min-height: 100vh;
+        height: auto;
+        padding: 15px;
+        align-items: flex-start;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 380px;
+        margin: 20px auto;
+    }
+
+    .calculator {
+        width: 100%;
+        max-width: 100%;
+        padding: 12px;
+    }
+
+    .calculator > div {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .calculator input {
+        width: calc(100% - 20px);
+        margin: 10px;
+        padding: 15px 10px;
+        font-size: 30px;
+    }
+
+    .calculator .button {
+        width: clamp(40px, 17vw, 60px);
+        height: clamp(45px, 14vw, 60px);
+        margin: 5px;
+        font-size: 17px;
+    }
+
+    .scientific-buttons {
+        gap: 7px;
+    }
+
+    .scientific-button {
+        height: 43px;
+        font-size: 13px;
+    }
+
+    .history {
+        width: 100%;
+        max-width: 100%;
+    }
+
+}
+
+@media screen and (max-width: 350px) {
+
+    .calculator {
+        padding: 8px;
+    }
+
+    .calculator .button {
+        margin: 3px;
+        font-size: 15px;
+    }
+
+}
