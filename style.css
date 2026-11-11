@@ -1,5 +1,57 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap');
 
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#themeToggle {
+    width: auto;
+    height: auto;
+    padding: 12px 20px;
+    margin: 0;
+    border-radius: 12px;
+    background: #334155;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+body.light-mode {
+    background: #e8eef6;
+    color: #1e293b;
+}
+
+body.light-mode .calculator {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .calculator input {
+    color: #1e293b;
+}
+
+body.light-mode .calculator input::placeholder {
+    color: #64748b;
+}
+
+body.light-mode .calculator .button {
+    background: #e2e8f0;
+    color: #1e293b;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .calculator .operator {
+    color: #2563eb;
+}
+
+body.light-mode .calculator .equalBtn {
+    background: #2563eb;
+    color: white;
+}
 *{
     margin: 0;
     padding: 0;
