@@ -114,3 +114,89 @@ button{
 .operator{
     color: #6dee0a;
 }
+
+/* =========================
+   CALCULATION HISTORY
+========================= */
+
+.history {
+    width: 100%;
+    max-width: 350px;
+    margin: 20px auto 0;
+    padding: 18px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.history-header h3 {
+    font-size: 16px;
+}
+
+#clearHistory {
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #fb7c14;
+    color: white;
+    font-size: 12px;
+}
+
+#historyList {
+    list-style: none;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+#historyList li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 13px;
+}
+
+#historyList li:last-child {
+    border-bottom: none;
+}
+
+#historyList .history-expression {
+    color: #b8c4d6;
+}
+
+#historyList .history-result {
+    color: #6dee0a;
+    font-weight: bold;
+}
+
+/* Light mode support, if you added the previous feature */
+
+body.light-mode .history {
+    background: white;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+body.light-mode #historyList .history-expression {
+    color: #64748b;
+}
+
+body.light-mode #historyList .history-result {
+    color: #15803d;
+}
+
+body.light-mode #historyList li {
+    border-bottom-color: #e2e8f0;
+}
