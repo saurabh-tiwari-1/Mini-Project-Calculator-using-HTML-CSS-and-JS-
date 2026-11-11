@@ -1,29 +1,213 @@
 
-const input = document.getElementById('inputBox');
-const buttons = document.querySelectorAll('.calculator .button');
-const historyList = document.getElementById('historyList');
-const clearHistory = document.getElementById('clearHistory');
-const themeToggle = document.getElementById('themeToggle');
+const input = document.getElementById("inputBox");
+const buttons = document.querySelectorAll(".calculator .button");
+const scientificButtons = document.querySelectorAll(".scientific-button");
+
+const historyList = document.getElementById("historyList");
+const emptyHistory = document.getElementById("emptyHistory");
+const clearHistory = document.getElementById("clearHistory");
+
+const themeToggle = document.getElementById("themeToggle");
+const angleToggle = document.getElementById("angleToggle");
+const copyResult = document.getElementById("copyResult");
+
+const totalCalculationsElement = document.getElementById("totalCalculations");
+const averageResultElement = document.getElementById("averageResult");
+const lastResultElement = document.getElementById("lastResult");
 
 let string = "";
+let justEvaluated = false;
+
 let calculationHistory = [];
 
+let angleMode = localStorage.getItem("calculatorAngleMode") || "DEG";
+
+if (!["DEG", "RAD"].includes(angleMode)) {
+    angleMode = "DEG";
+}
+
+let calculatorStats = {
+    total: 0,
+    sum: 0,
+    last: 0
+};
+
 try {
-    calculationHistory = JSON.parse(
+    const savedHistory = JSON.parse(
         localStorage.getItem("calculatorHistory") || "[]"
     );
 
-    if (!Array.isArray(calculationHistory)) {
-        calculationHistory = [];
+    if (Array.isArray(savedHistory)) {
+        calculationHistory = savedHistory
+            .filter(item =>
+                item &&
+                typeof item.expression === "string" &&
+                Number.isFinite(Number(item.result))
+            )
+            .slice(0, 10);
     }
 } catch (error) {
     calculationHistory = [];
 }
 
+try {
+    const savedStats = JSON.parse(
+        localStorage.getItem("calculatorStats") || "{}"
+    );
+
+    if (
+        Number.isFinite(savedStats.total) &&
+        Number.isFinite(savedStats.sum) &&
+        Number.isFinite(savedStats.last)
+    ) {
+        calculatorStats = {
+            total: savedStats.total,
+            sum: savedStats.sum,
+            last: savedStats.last
+        };
+    }
+} catch (error) {
+    calculatorStats = {
+        total: 0,
+        sum: 0,
+        last: 0
+    };
+}
+
+function formatNumber(number) {
+    if (!Number.isFinite(number)) {
+        throw new Error("Invalid result");
+    }
+
+    return Number(number.toPrecision(12)).toString();
+}
+
+function evaluateExpression(expression) {
+
+    const tokens = expression.match(
+        /(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|[+\-*/]/gi
+    );
+
+    if (
+        !tokens ||
+        tokens.join("").toLowerCase() !==
+        expression.replace(/\s/g, "").toLowerCase()
+    ) {
+        throw new Error("Invalid expression");
+    }
+
+    let position = 0;
+
+    function parsePrimary() {
+
+        const token = tokens[position];
+
+        if (token === "+" || token === "-") {
+            position++;
+
+            const value = parsePrimary();
+
+            return token === "-" ? -value : value;
+        }
+
+        if (token === undefined) {
+            throw new Error("Incomplete expression");
+        }
+
+        position++;
+
+        const value = Number(token);
+
+        if (!Number.isFinite(value)) {
+            throw new Error("Invalid number");
+        }
+
+        return value;
+    }
+
+    function parseTerm() {
+
+        let value = parsePrimary();
+
+        while (
+            tokens[position] === "*" ||
+            tokens[position] === "/"
+        ) {
+
+            const operator = tokens[position++];
+
+            const nextValue = parsePrimary();
+
+            if (operator === "*") {
+                value *= nextValue;
+            } else {
+                value /= nextValue;
+            }
+
+        }
+
+        return value;
+    }
+
+    function parseExpression() {
+
+        let value = parseTerm();
+
+        while (
+            tokens[position] === "+" ||
+            tokens[position] === "-"
+        ) {
+
+            const operator = tokens[position++];
+
+            const nextValue = parseTerm();
+
+            if (operator === "+") {
+                value += nextValue;
+            } else {
+                value -= nextValue;
+            }
+
+        }
+
+        return value;
+    }
+
+    const result = parseExpression();
+
+    if (position !== tokens.length || !Number.isFinite(result)) {
+        throw new Error("Invalid calculation");
+    }
+
+    return result;
+}
+
+function updateStatistics() {
+
+    totalCalculationsElement.textContent =
+        calculatorStats.total.toLocaleString();
+
+    const average = calculatorStats.total > 0
+        ? calculatorStats.sum / calculatorStats.total
+        : 0;
+
+    averageResultElement.textContent =
+        formatNumber(average);
+
+    lastResultElement.textContent =
+        formatNumber(calculatorStats.last);
+
+}
+
 function displayHistory() {
+
     historyList.innerHTML = "";
 
+    emptyHistory.style.display =
+        calculationHistory.length === 0 ? "block" : "none";
+
     calculationHistory.forEach(item => {
+
         const li = document.createElement("li");
 
         const expression = document.createElement("span");
@@ -32,16 +216,29 @@ function displayHistory() {
 
         const result = document.createElement("span");
         result.className = "history-result";
-        result.textContent = item.result;
+        result.textContent = formatNumber(Number(item.result));
 
         li.appendChild(expression);
         li.appendChild(result);
 
+        li.title = "Click to reuse this result";
+
+        li.addEventListener("click", () => {
+
+            string = formatNumber(Number(item.result));
+            input.value = string;
+            justEvaluated = true;
+
+        });
+
         historyList.appendChild(li);
+
     });
+
 }
 
 function saveHistory(expression, result) {
+
     calculationHistory.unshift({
         expression: expression,
         result: result
@@ -54,180 +251,104 @@ function saveHistory(expression, result) {
         JSON.stringify(calculationHistory)
     );
 
+    calculatorStats.total++;
+    calculatorStats.sum += result;
+    calculatorStats.last = result;
+
+    localStorage.setItem(
+        "calculatorStats",
+        JSON.stringify(calculatorStats)
+    );
+
     displayHistory();
+    updateStatistics();
+
 }
 
-buttons.forEach(button => {
-    button.addEventListener('click', (e) => {
-        const value = e.currentTarget.textContent.trim();
+function calculate() {
 
-        if (value === '=') {
-            if (string === "") return;
+    if (string.trim() === "") {
+        return;
+    }
 
-            try {
-                const expression = string;
-                const result = eval(expression);
+    try {
 
-                if (!Number.isFinite(result)) {
-                    throw new Error("Invalid calculation");
-                }
+        const expression = string;
 
-                const finalResult = Number.parseFloat(
-                    result.toPrecision(12)
-                );
+        const result = evaluateExpression(expression);
 
-                string = String(finalResult);
-                input.value = string;
+        const finalResult = Number(formatNumber(result));
 
-                saveHistory(expression, finalResult);
+        string = formatNumber(finalResult);
+        input.value = string;
 
-            } catch (error) {
-                input.value = "Error";
-                string = "";
-            }
-        }
+        justEvaluated = true;
 
-        else if (value === 'AC') {
-            string = "";
-            input.value = "";
-        }
+        saveHistory(expression, finalResult);
 
-        else if (value === 'DEL') {
-            if (input.value === "Error") {
-                string = "";
-            } else {
-                string = string.substring(0, string.length - 1);
-            }
+    } catch (error) {
 
-            input.value = string;
-        }
+        input.value = "Error";
+        string = "";
+        justEvaluated = false;
 
-        else if (value === '%') {
-            if (string !== "") {
-                try {
-                    const result = eval(string) / 100;
+    }
 
-                    if (!Number.isFinite(result)) {
-                        throw new Error("Invalid calculation");
-                    }
-
-                    string = String(result);
-                    input.value = string;
-
-                } catch (error) {
-                    string = "";
-                    input.value = "Error";
-                }
-            }
-        }
-
-        else {
-            if (input.value === "Error") {
-                string = "";
-            }
-
-            string += value;
-            input.value = string;
-        }
-    });
-});
-
-if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-        document.body.classList.toggle("light-mode");
-
-        if (document.body.classList.contains("light-mode")) {
-            themeToggle.textContent = "🌙 Dark Mode";
-        } else {
-            themeToggle.textContent = "☀️ Light Mode";
-        }
-    });
 }
 
-if (clearHistory) {
-    clearHistory.addEventListener("click", () => {
-        calculationHistory = [];
-        localStorage.removeItem("calculatorHistory");
-        displayHistory();
-    });
+function clearCalculator() {
+
+    string = "";
+    input.value = "";
+    justEvaluated = false;
+
 }
 
-displayHistory();
+function deleteLastCharacter() {
 
-const scientificButtons = document.querySelectorAll(".scientific-button");
+    if (input.value === "Error") {
+        clearCalculator();
+        return;
+    }
 
-scientificButtons.forEach(button => {
+    string = string.slice(0, -1);
+    input.value = string;
+    justEvaluated = false;
 
-    button.addEventListener("click", () => {
+}
 
-        const operation = button.dataset.scientific;
+function handleButton(value) {
 
-        if (operation === "pi") {
-            string += String(Math.PI);
-            input.value = string;
+    if (value === "=") {
+        calculate();
+        return;
+    }
+
+    if (value === "AC") {
+        clearCalculator();
+        return;
+    }
+
+    if (value === "DEL") {
+        deleteLastCharacter();
+        return;
+    }
+
+    if (value === "%") {
+
+        if (string.trim() === "") {
             return;
         }
-
-        if (operation === "e") {
-            string += String(Math.E);
-            input.value = string;
-            return;
-        }
-
-        if (string === "") return;
 
         try {
 
-            const number = eval(string);
+            const expression = string + "%";
+            const result = evaluateExpression(string) / 100;
 
-            let result;
-
-            switch (operation) {
-
-                case "sqrt":
-                    result = Math.sqrt(number);
-                    break;
-
-                case "square":
-                    result = number ** 2;
-                    break;
-
-                case "sin":
-                    result = Math.sin(number * Math.PI / 180);
-                    break;
-
-                case "cos":
-                    result = Math.cos(number * Math.PI / 180);
-                    break;
-
-                case "tan":
-                    result = Math.tan(number * Math.PI / 180);
-                    break;
-
-                case "log":
-                    result = Math.log10(number);
-                    break;
-
-                case "ln":
-                    result = Math.log(number);
-                    break;
-
-                case "reciprocal":
-                    result = 1 / number;
-                    break;
-
-            }
-
-            if (!Number.isFinite(result)) {
-                throw new Error("Invalid calculation");
-            }
-
-            const expression = operation + "(" + string + ")";
-
-            result = Number.parseFloat(result.toPrecision(12));
-
-            string = String(result);
+            string = formatNumber(result);
             input.value = string;
+
+            justEvaluated = true;
 
             saveHistory(expression, result);
 
@@ -235,93 +356,336 @@ scientificButtons.forEach(button => {
 
             input.value = "Error";
             string = "";
+            justEvaluated = false;
 
         }
+
+        return;
+    }
+
+    if (input.value === "Error") {
+        clearCalculator();
+    }
+
+    if (justEvaluated) {
+
+        if (/^[0-9.]$/.test(value) || value === "00") {
+            string = "";
+            input.value = "";
+        }
+
+        justEvaluated = false;
+
+    }
+
+    if ("+-*/".includes(value)) {
+
+        if (string === "" && value !== "-") {
+            return;
+        }
+
+        const lastCharacter = string.slice(-1);
+
+        if ("+-*/".includes(lastCharacter)) {
+
+            if (value === "-" && lastCharacter !== "-") {
+                string += value;
+            } else {
+                string = string.slice(0, -1) + value;
+            }
+
+        } else {
+            string += value;
+        }
+
+    } else {
+
+        if (value === ".") {
+
+            const currentNumber = string.split(/[+\-*/]/).pop();
+
+            if (currentNumber.includes(".")) {
+                return;
+            }
+
+        }
+
+        string += value;
+
+    }
+
+    input.value = string;
+
+}
+
+buttons.forEach(button => {
+
+    button.addEventListener("click", () => {
+
+        handleButton(button.dataset.value);
 
     });
 
 });
 
-document.addEventListener("keydown", function(event) {
+function toRadians(value) {
 
-    const key = event.key;
+    return angleMode === "DEG"
+        ? value * Math.PI / 180
+        : value;
 
-    if (event.ctrlKey || event.altKey || event.metaKey) {
+}
+
+function handleScientific(operation) {
+
+    if (operation === "pi" || operation === "e") {
+
+        if (justEvaluated) {
+            string = "";
+            justEvaluated = false;
+        }
+
+        if (input.value === "Error") {
+            clearCalculator();
+        }
+
+        const constant = operation === "pi"
+            ? String(Math.PI)
+            : String(Math.E);
+
+        if (/[0-9.]$/.test(string)) {
+            string += "*";
+        }
+
+        string += constant;
+        input.value = string;
+
+        return;
+
+    }
+
+    if (string.trim() === "") {
         return;
     }
 
-    if (/^[0-9]$/.test(key) || key === "00") {
+    try {
 
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === key
-        );
+        const number = evaluateExpression(string);
 
-        if (button) button.click();
+        let result;
+
+        switch (operation) {
+
+            case "sqrt":
+                result = Math.sqrt(number);
+                break;
+
+            case "square":
+                result = number ** 2;
+                break;
+
+            case "sin":
+                result = Math.sin(toRadians(number));
+                break;
+
+            case "cos":
+                result = Math.cos(toRadians(number));
+                break;
+
+            case "tan": {
+
+                const angle = toRadians(number);
+
+                if (Math.abs(Math.cos(angle)) < 1e-12) {
+                    throw new Error("Undefined tangent");
+                }
+
+                result = Math.tan(angle);
+                break;
+
+            }
+
+            case "log":
+                result = Math.log10(number);
+                break;
+
+            case "ln":
+                result = Math.log(number);
+                break;
+
+            case "reciprocal":
+                result = 1 / number;
+                break;
+
+            default:
+                throw new Error("Unknown operation");
+
+        }
+
+        if (!Number.isFinite(result)) {
+            throw new Error("Invalid calculation");
+        }
+
+        const expression = operation + "(" + string + ")";
+
+        result = Number(formatNumber(result));
+
+        string = formatNumber(result);
+        input.value = string;
+
+        justEvaluated = true;
+
+        saveHistory(expression, result);
+
+    } catch (error) {
+
+        input.value = "Error";
+        string = "";
+        justEvaluated = false;
 
     }
 
-    else if ("+-*/".includes(key)) {
+}
 
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === key
-        );
+scientificButtons.forEach(button => {
 
-        if (button) button.click();
+    button.addEventListener("click", () => {
 
+        handleScientific(button.dataset.scientific);
+
+    });
+
+});
+
+angleToggle.textContent = angleMode;
+
+angleToggle.addEventListener("click", () => {
+
+    angleMode = angleMode === "DEG" ? "RAD" : "DEG";
+
+    angleToggle.textContent = angleMode;
+
+    localStorage.setItem(
+        "calculatorAngleMode",
+        angleMode
+    );
+
+});
+
+if (localStorage.getItem("calculatorTheme") === "light") {
+
+    document.body.classList.add("light-mode");
+    themeToggle.textContent = "🌙 Dark Mode";
+
+}
+
+themeToggle.addEventListener("click", () => {
+
+    document.body.classList.toggle("light-mode");
+
+    const isLight = document.body.classList.contains("light-mode");
+
+    themeToggle.textContent = isLight
+        ? "🌙 Dark Mode"
+        : "☀️ Light Mode";
+
+    localStorage.setItem(
+        "calculatorTheme",
+        isLight ? "light" : "dark"
+    );
+
+});
+
+clearHistory.addEventListener("click", () => {
+
+    calculationHistory = [];
+
+    localStorage.removeItem("calculatorHistory");
+
+    displayHistory();
+
+});
+
+copyResult.addEventListener("click", async () => {
+
+    if (
+        input.value.trim() === "" ||
+        input.value === "Error"
+    ) {
+        return;
     }
 
-    else if (key === ".") {
+    try {
 
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === "."
-        );
+        await navigator.clipboard.writeText(input.value);
 
-        if (button) button.click();
+        copyResult.textContent = "✓ Copied!";
 
-    }
+        setTimeout(() => {
 
-    else if (key === "Enter" || key === "=") {
+            copyResult.textContent = "📋 Copy Result";
 
-        event.preventDefault();
+        }, 1500);
 
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === "="
-        );
+    } catch (error) {
 
-        if (button) button.click();
+        copyResult.textContent = "Copy unavailable";
 
-    }
+        setTimeout(() => {
 
-    else if (key === "Backspace") {
+            copyResult.textContent = "📋 Copy Result";
 
-        event.preventDefault();
-
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === "DEL"
-        );
-
-        if (button) button.click();
-
-    }
-
-    else if (key === "Escape") {
-
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === "AC"
-        );
-
-        if (button) button.click();
-
-    }
-
-    else if (key === "%") {
-
-        const button = Array.from(buttons).find(
-            btn => btn.textContent.trim() === "%"
-        );
-
-        if (button) button.click();
+        }, 1500);
 
     }
 
 });
+
+document.addEventListener("keydown", event => {
+
+    if (
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    const key = event.key;
+
+    if (/^[0-9]$/.test(key)) {
+
+        handleButton(key);
+
+    } else if ("+-*/".includes(key)) {
+
+        handleButton(key);
+
+    } else if (key === ".") {
+
+        handleButton(".");
+
+    } else if (key === "Enter" || key === "=") {
+
+        event.preventDefault();
+        handleButton("=");
+
+    } else if (key === "Backspace") {
+
+        event.preventDefault();
+        handleButton("DEL");
+
+    } else if (key === "Escape") {
+
+        handleButton("AC");
+
+    } else if (key === "%") {
+
+        handleButton("%");
+
+    }
+
+});
+
+displayHistory();
+updateStatistics();
